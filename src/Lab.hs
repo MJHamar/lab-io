@@ -20,29 +20,36 @@ import System.IO.Strict (hGetContents)
 -- | 'extractFirstLine' @inHandle outHandle@ reads the first line from 
 -- @inHandle@ and writes it to @outHandle@.
 extractFirstLine :: Handle -> Handle -> IO ()
-extractFirstLine inHandle outHandle = undefined
+extractFirstLine inHandle outHandle = 
+    hGetLine inHandle >>= hPutStr outHandle
 
 -- | 'replicateFirstLine' @inHandle outHandle@ reads the first line from
 -- @inHandle@ and writes it to @outHandle@ five times.
 replicateFirstLine :: Handle -> Handle -> IO ()
-replicateFirstLine inHandle outHandle = undefined
+replicateFirstLine inHandle outHandle = 
+    hGetLine inHandle >>= \line -> replicateM_ 5 (hPutStrLn outHandle line)
 
 -- | 'reverseFile' @inHandle outHandle@ reads all lines from @inHandle@ and
 -- writes them to @outHandle@ in reverse order.
 reverseFile :: Handle -> Handle -> IO ()
-reverseFile inHandle outHandle = undefined
+reverseFile inHandle outHandle = 
+    hGetContents inHandle >>= hPutStr outHandle . unlines . reverse . lines
 
 --------------------------------------------------------------------------------
 
 -- | 'readKeyValuePair' @line@ parses a string of form @"key=value"@ into a pair
 -- of the form @("key", "value")@.
 readKeyValuePair :: String -> (String, String)
-readKeyValuePair input = undefined
+readKeyValuePair input = (xs, tail ys) where (xs,ys) = span (/= '=') input
 
 -- | 'readDictionary' @inHandle@ reads all lines from @inHandle@ and parses each
 -- of them using 'readKeyValuePair'.
 readDictionary :: Handle -> IO [(String, String)]
-readDictionary inHandle = undefined
+readDictionary inHandle = 
+    hGetContents inHandle >>= pure . map readKeyValuePair . lines
+
+grandduck :: [(String, String)] -> String -> Maybe String 
+grandduck dict key = lookup key dict >>= \parent -> lookup parent dict
 
 -- | 'writeGrandDucks' @dictPath inPath outPath@ reads the file at @dictPath@ 
 -- using 'readDictionary' and, for each line in the file at @inPath@, 
@@ -50,6 +57,13 @@ readDictionary inHandle = undefined
 -- at @dictPath@. If a grandduck is found, its name is written to a file at 
 -- @outPath@. Otherwise, a dash is written to the file instead.
 writeGrandDucks :: FilePath -> FilePath -> FilePath -> IO ()
-writeGrandDucks dictPath inPath outPath = undefined
+writeGrandDucks dictPath inPath outPath = do
+    dict <- withFile dictPath ReadMode readDictionary
+    withFile inPath ReadMode $ \inHandle ->
+        withFile outPath WriteMode $ \outHandle -> do 
+            xs <- lines <$> hGetContents inHandle 
+            forM_ xs $ \duck -> case grandduck dict duck of 
+                Nothing -> hPutStrLn outHandle "-"
+                Just gd -> hPutStrLn outHandle gd
 
 --------------------------------------------------------------------------------
